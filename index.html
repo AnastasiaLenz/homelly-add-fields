@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Homelly.art — Batch → PDF (без потери качества)</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#12141b; --text:#e8eaf0; --muted:#a7adbb; --line:#252a36; --blue:#1a6cff;
+      --ok:#31d07b; --warn:#ffd37a; --bad:#ff8a7a;
+    }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px;display:grid;grid-template-columns:360px 1fr;gap:16px;}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    h1{margin:0 0 8px;font-size:18px;}
+    .sub{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.35;}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px;}
+    input,select,button{
+      width:100%;box-sizing:border-box;border:1px solid var(--line);background:#0e1016;color:var(--text);
+      padding:10px 12px;border-radius:12px;outline:none;
+    }
+    input:focus,select:focus{border-color:#3a4257;}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    button{cursor:pointer;font-weight:800;}
+    button.primary{background:var(--blue);border-color:var(--blue);}
+    button.ghost{background:transparent;}
+    .pill{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;}
+    .list{display:grid;gap:12px;}
+    .item{border:1px solid var(--line);border-radius:16px;padding:12px;background:#0e1016;}
+    .itemHead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
+    .fn{font-weight:800;font-size:13px;line-height:1.25;}
+    .meta{color:var(--muted);font-size:12px;margin-top:4px;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+    .preview{
+      width:100%; aspect-ratio: 3 / 4; border-radius:14px; border:1px solid var(--line);
+      background:#0b0c10 center/cover no-repeat;
+      position:relative; overflow:hidden;
+    }
+    .trim{
+      position:absolute; inset:0;
+      outline:2px dashed rgba(255,255,255,.22);
+      outline-offset:-10px; /* просто визуально, не точно */
+      pointer-events:none;
+    }
+    .tiny{font-size:11px;color:var(--muted);line-height:1.35;}
+    .check{display:flex;gap:10px;align-items:center;margin-top:10px;color:var(--muted);font-size:12px;}
+    .check input{width:auto;}
+    .warn{color:var(--warn);font-size:12px;margin-top:10px;line-height:1.35;}
+    .good{color:var(--ok);font-weight:800;}
+    .bad{color:var(--bad);font-weight:800;}
+    .muted{color:var(--muted);}
+    .hr{height:1px;background:var(--line);margin:10px 0;}
+    .smallBtnRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1>Batch → PDF (без потери качества)</h1>
+      <p class="sub">
+        Загрузи несколько изображений → настрой формат/вылеты/обрезку → получи один PDF.
+        <br><span class="tiny">Файлы не уходят на сервер: всё делается локально в браузере.</span>
+      </p>
+
+      <label>Загрузить изображения (JPG/PNG)</label>
+      <input id="files" type="file" accept="image/jpeg,image/png" multiple />
+
+      <div class="hr"></div>
+
+      <label>Формат страниц (обрезной, см)</label>
+      <select id="pagePreset">
+        <option value="21x30">21×30</option>
+        <option value="30x40" selected>30×40</option>
+        <option value="40x50">40×50</option>
+        <option value="50x70">50×70</option>
+        <option value="60x80">60×80</option>
+        <option value="custom">Свой размер…</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Ширина, см</label>
+          <input id="pageW" type="number" min="1" step="0.1" value="30"/>
+        </div>
+        <div>
+          <label>Высота, см</label>
+          <input id="pageH" type="number" min="1" step="0.1" value="40"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Вылеты (bleed), мм</label>
+          <input id="bleed" type="number" min="0" step="1" value="3"/>
+        </div>
+        <div>
+          <label>Crop marks</label>
+          <select id="cropMarks">
+            <option value="on" selected>Рисовать</option>
+            <option value="off">Не рисовать</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Режим по умолчанию для новых изображений</label>
+      <select id="defaultFit">
+        <option value="cover" selected>Заполнить (cover) — с обрезкой</option>
+        <option value="contain">Вписать (contain) — с полями</option>
+      </select>
+
+      <div class="check">
+        <input id="coverBleed" type="checkbox" checked />
+        <label for="coverBleed" style="margin:0">В режиме cover заполнять и вылеты (рекомендуется)</label>
+      </div>
+
+      <div class="smallBtnRow">
+        <button class="ghost" id="setAllCover">Всем: cover</button>
+        <button class="ghost" id="setAllContain">Всем: contain</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <button class="primary" id="exportPdf">Собрать PDF</button>
+
+      <p class="warn" id="status"></p>
+
+      <p class="tiny muted">
+        “Без потери качества” тут означает: изображения встраиваются в PDF без перерисовки через canvas;
+        “обрезка” делается клиппингом в PDF (могут быть большие PDF-файлы).
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="itemHead">
+        <div>
+          <div class="fn">Файлы</div>
+          <div class="meta" id="countMeta">Пока ничего не загружено</div>
+        </div>
+        <span class="pill" id="libMeta">pdf-lib: loading…</span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="list" id="list"></div>
+    </section>
+  </div>
+
+  <!-- pdf-lib (pin to 1.17.1) -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+
+    const filesEl = $("files");
+    const listEl = $("list");
+    const countMeta = $("countMeta");
+    const statusEl = $("status");
+
+    const pagePreset = $("pagePreset");
+    const pageW = $("pageW");
+    const pageH = $("pageH");
+    const bleed = $("bleed");
+    const cropMarks = $("cropMarks");
+    const defaultFit = $("defaultFit");
+    const coverBleed = $("coverBleed");
+    const exportBtn = $("exportPdf");
+
+    const setAllCover = $("setAllCover");
+    const setAllContain = $("setAllContain");
+
+    const libMeta = $("libMeta");
+
+    const PRESETS = {
+      "21x30": { w: 21, h: 30 },
+      "30x40": { w: 30, h: 40 },
+      "40x50": { w: 40, h: 50 },
+      "50x70": { w: 50, h: 70 },
+      "60x80": { w: 60, h: 80 },
+    };
+
+    const items = []; // { id, file, bytes, mime, imgW, imgH, url, fit, shiftX, shiftY }
+
+    // ---- helpers
+    const mmToPt = (mm) => (mm / 25.4) * 72;
+    const cmToPt = (cm) => (cm / 2.54) * 72;
+    const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+    function currentTrimCm() {
+      const w = Math.max(0.1, Number(pageW.value || 0));
+      const h = Math.max(0.1, Number(pageH.value || 0));
+      return { w, h };
+    }
+
+    function setPresetUI(pkey) {
+      if (pkey === "custom") return;
+      const p = PRESETS[pkey];
+      pageW.value = p.w;
+      pageH.value = p.h;
+      refreshPreviews();
+    }
+
+    pagePreset.addEventListener("change", () => {
+      if (pagePreset.value !== "custom") setPresetUI(pagePreset.value);
+    });
+
+    [pageW, pageH, bleed, defaultFit, coverBleed].forEach(el => {
+      el.addEventListener("input", refreshPreviews);
+      el.addEventListener("change", refreshPreviews);
+    });
+
+    // ---- UI builders
+    function makeItemCard(item) {
+      const wrap = document.createElement("div");
+      wrap.className = "item";
+      wrap.dataset.id = item.id;
+
+      const head = document.createElement("div");
+      head.className = "itemHead";
+
+      const left = document.createElement("div");
+      const fn = document.createElement("div");
+      fn.className = "fn";
+      fn.textContent = item.file.name;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML = `Исходник: <span class="kbd">${item.imgW}×${item.imgH}</span> • ${item.mime.replace("image/","").toUpperCase()}`;
+
+      left.appendChild(fn);
+      left.appendChild(meta);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "ghost";
+      delBtn.style.width = "auto";
+      delBtn.style.padding = "8px 10px";
+      delBtn.textContent = "Удалить";
+      delBtn.addEventListener("click", () => {
+        const idx = items.findIndex(x => x.id === item.id);
+        if (idx >= 0) {
+          URL.revokeObjectURL(items[idx].url);
+          items.splice(idx, 1);
+          renderList();
+        }
+      });
+
+      head.appendChild(left);
+      head.appendChild(delBtn);
+
+      const grid = document.createElement("div");
+      grid.className = "grid2";
+
+      // preview box
+      const prev = document.createElement("div");
+      prev.className = "preview";
+      prev.style.backgroundImage = `url("${item.url}")`;
+
+      const trimOverlay = document.createElement("div");
+      trimOverlay.className = "trim";
+      prev.appendChild(trimOverlay);
+
+      // controls
+      const controls = document.createElement("div");
+
+      const fitLabel = document.createElement("label");
+      fitLabel.textContent = "Размещение";
+      const fitSel = document.createElement("select");
+      fitSel.innerHTML = `
+        <option value="cover">Заполнить (cover) — с обрезкой</option>
+        <option value="contain">Вписать (contain) — с полями</option>
+      `;
+      fitSel.value = item.fit;
+      fitSel.addEventListener("change", () => {
+        item.fit = fitSel.value;
+        refreshItemPreview(item);
+        refreshItemSliders(controls, item);
+      });
+
+      controls.appendChild(fitLabel);
+      controls.appendChild(fitSel);
+
+      const sxLabel = document.createElement("label");
+      sxLabel.textContent = "Сдвиг по X (слева → вправо)";
+      const sx = document.createElement("input");
+      sx.type = "range";
+      sx.min = "0"; sx.max = "1"; sx.step = "0.01";
+      sx.value = String(item.shiftX);
+
+      const syLabel = document.createElement("label");
+      syLabel.textContent = "Сдвиг по Y (сверху → вниз)";
+      const sy = document.createElement("input");
+      sy.type = "range";
+      sy.min = "0"; sy.max = "1"; sy.step = "0.01";
+      sy.value = String(item.shiftY);
+
+      sx.addEventListener("input", () => {
+        item.shiftX = clamp01(Number(sx.value));
+        refreshItemPreview(item);
+      });
+      sy.addEventListener("input", () => {
+        item.shiftY = clamp01(Number(sy.value));
+        refreshItemPreview(item);
+      });
+
+      // stash refs to toggle visibility
+      sx.dataset.role = "sx";
+      sy.dataset.role = "sy";
+      sxLabel.dataset.role = "sxLabel";
+      syLabel.dataset.role = "syLabel";
+
+      controls.appendChild(sxLabel);
+      controls.appendChild(sx);
+      controls.appendChild(syLabel);
+      controls.appendChild(sy);
+
+      grid.appendChild(prev);
+      grid.appendChild(controls);
+
+      wrap.appendChild(head);
+      wrap.appendChild(grid);
+
+      refreshItemPreview(item);
+      refreshItemSliders(controls, item);
+
+      return wrap;
+    }
+
+    function refreshItemSliders(controls, item) {
+      const show = (item.fit === "cover");
+      const nodes = controls.querySelectorAll('[data-role="sx"],[data-role="sy"],[data-role="sxLabel"],[data-role="syLabel"]');
+      nodes.forEach(n => n.style.display = show ? "" : "none");
+    }
+
+    function refreshItemPreview(item) {
+      const card = listEl.querySelector(`.item[data-id="${item.id}"]`);
+      if (!card) return;
+      const prev = card.querySelector(".preview");
+
+      const { w, h } = currentTrimCm();
+      prev.style.aspectRatio = `${w} / ${h}`;
+
+      if (item.fit === "contain") {
+        prev.style.backgroundSize = "contain";
+        prev.style.backgroundPosition = "center center";
+      } else {
+        prev.style.backgroundSize = "cover";
+        // background-position: x% y%
+        const xPct = Math.round(item.shiftX * 100);
+        const yPct = Math.round(item.shiftY * 100);
+        prev.style.backgroundPosition = `${xPct}% ${yPct}%`;
+      }
+    }
+
+    function refreshPreviews() {
+      items.forEach(refreshItemPreview);
+    }
+
+    function renderList() {
+      listEl.innerHTML = "";
+      items.forEach(it => listEl.appendChild(makeItemCard(it)));
+      countMeta.textContent = items.length ? `Загружено: ${items.length}` : "Пока ничего не загружено";
+      statusEl.textContent = "";
+    }
+
+    // ---- load images
+    async function readFileBytes(file) {
+      const buf = await file.arrayBuffer();
+      return new Uint8Array(buf);
+    }
+
+    async function getImageDimsFromBytes(bytes, mime) {
+      // decode via browser Image (only to read dimensions; PDF will embed original bytes)
+      const blob = new Blob([bytes], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+      await new Promise((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("Не удалось прочитать изображение"));
+      });
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      URL.revokeObjectURL(url);
+      return { w, h };
+    }
+
+    filesEl.addEventListener("change", async () => {
+      const files = Array.from(filesEl.files || []);
+      if (!files.length) return;
+
+      statusEl.textContent = "Загружаю файлы…";
+
+      for (const f of files) {
+        if (!["image/jpeg","image/png"].includes(f.type)) continue;
+
+        const bytes = await readFileBytes(f);
+        const dims = await getImageDimsFromBytes(bytes, f.type);
+
+        const blobUrl = URL.createObjectURL(new Blob([bytes], { type: f.type }));
+
+        items.push({
+          id: crypto.randomUUID(),
+          file: f,
+          bytes,
+          mime: f.type,
+          imgW: dims.w,
+          imgH: dims.h,
+          url: blobUrl,
+          fit: defaultFit.value,
+          shiftX: 0.5,
+          shiftY: 0.5,
+        });
+      }
+
+      renderList();
+      statusEl.textContent = items.length ? "" : "Не удалось добавить файлы (поддерживаются JPG/PNG).";
+      filesEl.value = "";
+    });
+
+    setAllCover.addEventListener("click", () => {
+      items.forEach(it => it.fit = "cover");
+      renderList();
+    });
+    setAllContain.addEventListener("click", () => {
+      items.forEach(it => it.fit = "contain");
+      renderList();
+    });
+
+    // ---- PDF export (no canvas; clip in PDF)
+    function drawCropMarks(page, trimX, trimY, trimW, trimH, bleedPt) {
+      if (bleedPt <= 0) return;
+
+      const markLen = Math.min(bleedPt * 0.8, mmToPt(8));
+      const lw = 0.5; // pt
+
+      // corners: (trimX,trimY), (trimX+trimW,trimY), (trimX,trimY+trimH), (trimX+trimW,trimY+trimH)
+      const L = trimX, B = trimY, R = trimX + trimW, T = trimY + trimH;
+
+      const line = (x1,y1,x2,y2) => page.drawLine({ start:{x:x1,y:y1}, end:{x:x2,y:y2}, thickness: lw });
+
+      // bottom-left
+      line(L, B - markLen, L, B);
+      line(L - markLen, B, L, B);
+      // bottom-right
+      line(R, B - markLen, R, B);
+      line(R, B, R + markLen, B);
+      // top-left
+      line(L, T, L, T + markLen);
+      line(L - markLen, T, L, T);
+      // top-right
+      line(R, T, R, T + markLen);
+      line(R, T, R + markLen, T);
+    }
+
+    exportBtn.addEventListener("click", async () => {
+      statusEl.textContent = "";
+
+      if (!window.PDFLib) {
+        statusEl.textContent = "pdf-lib не загрузился. Проверь интернет/блокировки CDN.";
+        return;
+      }
+      if (!items.length) {
+        statusEl.textContent = "Сначала добавь изображения.";
+        return;
+      }
+
+      const { PDFDocument, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } = window.PDFLib;
+
+      const trim = currentTrimCm();
+      const bleedMm = Math.max(0, Number(bleed.value || 0));
+      const bleedPt = mmToPt(bleedMm);
+
+      const trimWpt = cmToPt(trim.w);
+      const trimHpt = cmToPt(trim.h);
+
+      const pageWpt = trimWpt + bleedPt * 2;
+      const pageHpt = trimHpt + bleedPt * 2;
+
+      const trimX = bleedPt;
+      const trimY = bleedPt;
+
+      statusEl.textContent = "Собираю PDF…";
+
+      const pdfDoc = await PDFDocument.create();
+
+      for (const it of items) {
+        const page = pdfDoc.addPage([pageWpt, pageHpt]);
+
+        // embed image without re-rendering
+        let img;
+        if (it.mime === "image/jpeg") img = await pdfDoc.embedJpg(it.bytes);
+        else img = await pdfDoc.embedPng(it.bytes);
+
+        const imgW = img.width;
+        const imgH = img.height;
+
+        // area to fill
+        const isCover = (it.fit === "cover");
+        const fillBleed = coverBleed.checked;
+
+        const areaX = (isCover && fillBleed) ? 0 : trimX;
+        const areaY = (isCover && fillBleed) ? 0 : trimY;
+        const areaW = (isCover && fillBleed) ? pageWpt : trimWpt;
+        const areaH = (isCover && fillBleed) ? pageHpt : trimHpt;
+
+        if (isCover) {
+          // clip to area (so nothing outside)
+          page.pushOperators(
+            pushGraphicsState(),
+            moveTo(areaX, areaY),
+            lineTo(areaX + areaW, areaY),
+            lineTo(areaX + areaW, areaY + areaH),
+            lineTo(areaX, areaY + areaH),
+            closePath(),
+            clip(),
+            endPath()
+          );
+
+          const scale = Math.max(areaW / imgW, areaH / imgH);
+          const drawW = imgW * scale;
+          const drawH = imgH * scale;
+
+          const extraW = Math.max(0, drawW - areaW);
+          const extraH = Math.max(0, drawH - areaH);
+
+          // shiftX: 0 (left) .. 1 (right)
+          const x = areaX - extraW + extraW * clamp01(it.shiftX);
+          // shiftY: 0 (top) .. 1 (bottom)  -> in PDF y grows вверх
+          const y = areaY - extraH + extraH * clamp01(it.shiftY);
+
+          page.drawImage(img, { x, y, width: drawW, height: drawH });
+
+          page.pushOperators(popGraphicsState());
+        } else {
+          // contain (no crop): fit inside trim area
+          const scale = Math.min(trimWpt / imgW, trimHpt / imgH);
+          const drawW = imgW * scale;
+          const drawH = imgH * scale;
+          const x = trimX + (trimWpt - drawW) / 2;
+          const y = trimY + (trimHpt - drawH) / 2;
+          page.drawImage(img, { x, y, width: drawW, height: drawH });
+        }
+
+        if (cropMarks.value === "on") {
+          drawCropMarks(page, trimX, trimY, trimWpt, trimHpt, bleedPt);
+        }
+      }
+
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0,19).replaceAll(":","-");
+      a.href = url;
+      a.download = `homelly_batch_${trim.w}x${trim.h}_bleed${bleedMm}mm_${stamp}.pdf`;
+      a.click();
+
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      statusEl.innerHTML = `<span class="good">Готово ✅</span> PDF скачан. (Если PDF очень тяжёлый — это нормально, это и есть “без потери качества”.)`;
+    });
+
+    // init
+    libMeta.textContent = window.PDFLib ? "pdf-lib: OK" : "pdf-lib: loading…";
+    setPresetUI(pagePreset.value);
+  })();
+  </script>
+</body>
+</html>
