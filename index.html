@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Homelly.art — Batch → PDF (без потери качества)</title>
+  <title>Homelly — Поля → PDF</title>
   <style>
     :root{
       --bg:#0b0c10; --card:#12141b; --text:#e8eaf0; --muted:#a7adbb; --line:#252a36; --blue:#1a6cff;
@@ -30,37 +30,49 @@
     .itemHead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
     .fn{font-weight:800;font-size:13px;line-height:1.25;}
     .meta{color:var(--muted);font-size:12px;margin-top:4px;}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-    .preview{
-      width:100%; aspect-ratio: 3 / 4; border-radius:14px; border:1px solid var(--line);
-      background:#0b0c10 center/cover no-repeat;
-      position:relative; overflow:hidden;
-    }
-    .trim{
-      position:absolute; inset:0;
-      outline:2px dashed rgba(255,255,255,.22);
-      outline-offset:-10px; /* просто визуально, не точно */
-      pointer-events:none;
-    }
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;align-items:start;}
     .tiny{font-size:11px;color:var(--muted);line-height:1.35;}
-    .check{display:flex;gap:10px;align-items:center;margin-top:10px;color:var(--muted);font-size:12px;}
-    .check input{width:auto;}
     .warn{color:var(--warn);font-size:12px;margin-top:10px;line-height:1.35;}
     .good{color:var(--ok);font-weight:800;}
-    .bad{color:var(--bad);font-weight:800;}
     .muted{color:var(--muted);}
     .hr{height:1px;background:var(--line);margin:10px 0;}
-    .smallBtnRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+
+    /* Preview: белая страница + белые поля + картинка, растянутая в окно */
+    .pagePreview{
+      width:100%;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#ffffff;
+      overflow:hidden;
+      position:relative;
+    }
+    .pageInner{
+      position:absolute;
+      background:#ffffff;
+      overflow:hidden;
+    }
+    .imgFill{
+      position:absolute;
+      inset:0;
+      background-position:center;
+      background-repeat:no-repeat;
+      background-size:100% 100%; /* растягиваем без сохранения пропорций */
+    }
+    .shadowLine{
+      position:absolute; inset:0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+      pointer-events:none;
+    }
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="card">
-      <h1>Batch → PDF (без потери качества)</h1>
+      <h1>Поля → PDF (4 стороны)</h1>
       <p class="sub">
-        Загрузи несколько изображений → настрой формат/вылеты/обрезку → получи один PDF.
-        <br><span class="tiny">Файлы не уходят на сервер: всё делается локально в браузере.</span>
+        Загрузи несколько изображений → задай формат и белые поля (сверху/справа/снизу/слева) → получи один PDF.
+        <br><span class="tiny">Картинки не отправляются на сервер: всё делается локально.</span>
       </p>
 
       <label>Загрузить изображения (JPG/PNG)</label>
@@ -68,7 +80,7 @@
 
       <div class="hr"></div>
 
-      <label>Формат страниц (обрезной, см)</label>
+      <label>Формат страницы (см)</label>
       <select id="pagePreset">
         <option value="21x30">21×30</option>
         <option value="30x40" selected>30×40</option>
@@ -89,45 +101,35 @@
         </div>
       </div>
 
+      <label>Белые поля (мм)</label>
       <div class="row">
         <div>
-          <label>Вылеты (bleed), мм</label>
-          <input id="bleed" type="number" min="0" step="1" value="3"/>
+          <label style="margin-top:0">Слева</label>
+          <input id="mLeft" type="number" min="0" step="1" value="10"/>
         </div>
         <div>
-          <label>Crop marks</label>
-          <select id="cropMarks">
-            <option value="on" selected>Рисовать</option>
-            <option value="off">Не рисовать</option>
-          </select>
+          <label style="margin-top:0">Справа</label>
+          <input id="mRight" type="number" min="0" step="1" value="10"/>
         </div>
       </div>
-
-      <label>Режим по умолчанию для новых изображений</label>
-      <select id="defaultFit">
-        <option value="cover" selected>Заполнить (cover) — с обрезкой</option>
-        <option value="contain">Вписать (contain) — с полями</option>
-      </select>
-
-      <div class="check">
-        <input id="coverBleed" type="checkbox" checked />
-        <label for="coverBleed" style="margin:0">В режиме cover заполнять и вылеты (рекомендуется)</label>
-      </div>
-
-      <div class="smallBtnRow">
-        <button class="ghost" id="setAllCover">Всем: cover</button>
-        <button class="ghost" id="setAllContain">Всем: contain</button>
+      <div class="row">
+        <div>
+          <label>Сверху</label>
+          <input id="mTop" type="number" min="0" step="1" value="10"/>
+        </div>
+        <div>
+          <label>Снизу</label>
+          <input id="mBottom" type="number" min="0" step="1" value="10"/>
+        </div>
       </div>
 
       <div class="hr"></div>
 
       <button class="primary" id="exportPdf">Собрать PDF</button>
-
       <p class="warn" id="status"></p>
 
       <p class="tiny muted">
-        “Без потери качества” тут означает: изображения встраиваются в PDF без перерисовки через canvas;
-        “обрезка” делается клиппингом в PDF (могут быть большие PDF-файлы).
+        Картинка не обрезается и растягивается под окно внутри полей. Поля — белые.
       </p>
     </section>
 
@@ -141,12 +143,10 @@
       </div>
 
       <div class="hr"></div>
-
       <div class="list" id="list"></div>
     </section>
   </div>
 
-  <!-- pdf-lib (pin to 1.17.1) -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script>
   (() => {
@@ -160,15 +160,13 @@
     const pagePreset = $("pagePreset");
     const pageW = $("pageW");
     const pageH = $("pageH");
-    const bleed = $("bleed");
-    const cropMarks = $("cropMarks");
-    const defaultFit = $("defaultFit");
-    const coverBleed = $("coverBleed");
+
+    const mLeft = $("mLeft");
+    const mRight = $("mRight");
+    const mTop = $("mTop");
+    const mBottom = $("mBottom");
+
     const exportBtn = $("exportPdf");
-
-    const setAllCover = $("setAllCover");
-    const setAllContain = $("setAllContain");
-
     const libMeta = $("libMeta");
 
     const PRESETS = {
@@ -179,17 +177,26 @@
       "60x80": { w: 60, h: 80 },
     };
 
-    const items = []; // { id, file, bytes, mime, imgW, imgH, url, fit, shiftX, shiftY }
+    const items = []; // { id, file, bytes, mime, imgW, imgH, url }
 
-    // ---- helpers
+    // helpers
     const mmToPt = (mm) => (mm / 25.4) * 72;
     const cmToPt = (cm) => (cm / 2.54) * 72;
-    const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
-    function currentTrimCm() {
-      const w = Math.max(0.1, Number(pageW.value || 0));
-      const h = Math.max(0.1, Number(pageH.value || 0));
-      return { w, h };
+    function currentPageCm() {
+      return {
+        w: Math.max(0.1, Number(pageW.value || 0)),
+        h: Math.max(0.1, Number(pageH.value || 0)),
+      };
+    }
+
+    function currentMarginsMm() {
+      return {
+        l: Math.max(0, Number(mLeft.value || 0)),
+        r: Math.max(0, Number(mRight.value || 0)),
+        t: Math.max(0, Number(mTop.value || 0)),
+        b: Math.max(0, Number(mBottom.value || 0)),
+      };
     }
 
     function setPresetUI(pkey) {
@@ -204,12 +211,32 @@
       if (pagePreset.value !== "custom") setPresetUI(pagePreset.value);
     });
 
-    [pageW, pageH, bleed, defaultFit, coverBleed].forEach(el => {
+    [pageW, pageH, mLeft, mRight, mTop, mBottom].forEach(el => {
       el.addEventListener("input", refreshPreviews);
       el.addEventListener("change", refreshPreviews);
     });
 
-    // ---- UI builders
+    async function readFileBytes(file) {
+      const buf = await file.arrayBuffer();
+      return new Uint8Array(buf);
+    }
+
+    async function getImageDimsFromBytes(bytes, mime) {
+      const blob = new Blob([bytes], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+      await new Promise((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("Не удалось прочитать изображение"));
+      });
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      URL.revokeObjectURL(url);
+      return { w, h };
+    }
+
     function makeItemCard(item) {
       const wrap = document.createElement("div");
       wrap.className = "item";
@@ -225,8 +252,7 @@
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.innerHTML = `Исходник: <span class="kbd">${item.imgW}×${item.imgH}</span> • ${item.mime.replace("image/","").toUpperCase()}`;
-
+      meta.innerHTML = `Исходник: <span class="mono">${item.imgW}×${item.imgH}</span> • ${item.mime.replace("image/","").toUpperCase()}`;
       left.appendChild(fn);
       left.appendChild(meta);
 
@@ -250,109 +276,71 @@
       const grid = document.createElement("div");
       grid.className = "grid2";
 
-      // preview box
-      const prev = document.createElement("div");
-      prev.className = "preview";
-      prev.style.backgroundImage = `url("${item.url}")`;
+      const preview = document.createElement("div");
+      preview.className = "pagePreview";
 
-      const trimOverlay = document.createElement("div");
-      trimOverlay.className = "trim";
-      prev.appendChild(trimOverlay);
+      const inner = document.createElement("div");
+      inner.className = "pageInner";
 
-      // controls
-      const controls = document.createElement("div");
+      const imgFill = document.createElement("div");
+      imgFill.className = "imgFill";
+      imgFill.style.backgroundImage = `url("${item.url}")`;
 
-      const fitLabel = document.createElement("label");
-      fitLabel.textContent = "Размещение";
-      const fitSel = document.createElement("select");
-      fitSel.innerHTML = `
-        <option value="cover">Заполнить (cover) — с обрезкой</option>
-        <option value="contain">Вписать (contain) — с полями</option>
-      `;
-      fitSel.value = item.fit;
-      fitSel.addEventListener("change", () => {
-        item.fit = fitSel.value;
-        refreshItemPreview(item);
-        refreshItemSliders(controls, item);
-      });
+      inner.appendChild(imgFill);
+      preview.appendChild(inner);
+      preview.appendChild(Object.assign(document.createElement("div"), { className: "shadowLine" }));
 
-      controls.appendChild(fitLabel);
-      controls.appendChild(fitSel);
+      const note = document.createElement("div");
+      note.className = "tiny muted";
+      note.innerHTML =
+        `Картинка <b>растягивается</b> под окно внутри полей (без обрезки).<br/>` +
+        `Поля: белые.`;
 
-      const sxLabel = document.createElement("label");
-      sxLabel.textContent = "Сдвиг по X (слева → вправо)";
-      const sx = document.createElement("input");
-      sx.type = "range";
-      sx.min = "0"; sx.max = "1"; sx.step = "0.01";
-      sx.value = String(item.shiftX);
-
-      const syLabel = document.createElement("label");
-      syLabel.textContent = "Сдвиг по Y (сверху → вниз)";
-      const sy = document.createElement("input");
-      sy.type = "range";
-      sy.min = "0"; sy.max = "1"; sy.step = "0.01";
-      sy.value = String(item.shiftY);
-
-      sx.addEventListener("input", () => {
-        item.shiftX = clamp01(Number(sx.value));
-        refreshItemPreview(item);
-      });
-      sy.addEventListener("input", () => {
-        item.shiftY = clamp01(Number(sy.value));
-        refreshItemPreview(item);
-      });
-
-      // stash refs to toggle visibility
-      sx.dataset.role = "sx";
-      sy.dataset.role = "sy";
-      sxLabel.dataset.role = "sxLabel";
-      syLabel.dataset.role = "syLabel";
-
-      controls.appendChild(sxLabel);
-      controls.appendChild(sx);
-      controls.appendChild(syLabel);
-      controls.appendChild(sy);
-
-      grid.appendChild(prev);
-      grid.appendChild(controls);
+      grid.appendChild(preview);
+      grid.appendChild(note);
 
       wrap.appendChild(head);
       wrap.appendChild(grid);
 
-      refreshItemPreview(item);
-      refreshItemSliders(controls, item);
-
+      refreshItemPreview(item, wrap);
       return wrap;
     }
 
-    function refreshItemSliders(controls, item) {
-      const show = (item.fit === "cover");
-      const nodes = controls.querySelectorAll('[data-role="sx"],[data-role="sy"],[data-role="sxLabel"],[data-role="syLabel"]');
-      nodes.forEach(n => n.style.display = show ? "" : "none");
-    }
-
-    function refreshItemPreview(item) {
-      const card = listEl.querySelector(`.item[data-id="${item.id}"]`);
+    function refreshItemPreview(item, cardEl) {
+      const card = cardEl || listEl.querySelector(\`.item[data-id="\${item.id}"]\`);
       if (!card) return;
-      const prev = card.querySelector(".preview");
 
-      const { w, h } = currentTrimCm();
-      prev.style.aspectRatio = `${w} / ${h}`;
+      const page = currentPageCm();
+      const mm = currentMarginsMm();
 
-      if (item.fit === "contain") {
-        prev.style.backgroundSize = "contain";
-        prev.style.backgroundPosition = "center center";
-      } else {
-        prev.style.backgroundSize = "cover";
-        // background-position: x% y%
-        const xPct = Math.round(item.shiftX * 100);
-        const yPct = Math.round(item.shiftY * 100);
-        prev.style.backgroundPosition = `${xPct}% ${yPct}%`;
+      // превью: задаём пропорции страницы
+      const prev = card.querySelector(".pagePreview");
+      const inner = card.querySelector(".pageInner");
+      prev.style.aspectRatio = `${page.w} / ${page.h}`;
+
+      // перевод мм в см
+      const lCm = mm.l / 10, rCm = mm.r / 10, tCm = mm.t / 10, bCm = mm.b / 10;
+
+      const innerWcm = page.w - lCm - rCm;
+      const innerHcm = page.h - tCm - bCm;
+
+      if (innerWcm <= 0 || innerHcm <= 0) {
+        // если поля “съели” всё — покажем почти пустое окно
+        inner.style.left = "49%";
+        inner.style.right = "49%";
+        inner.style.top = "49%";
+        inner.style.bottom = "49%";
+        return;
       }
+
+      inner.style.left = `${(lCm / page.w) * 100}%`;
+      inner.style.right = `${(rCm / page.w) * 100}%`;
+      inner.style.top = `${(tCm / page.h) * 100}%`;
+      inner.style.bottom = `${(bCm / page.h) * 100}%`;
     }
 
     function refreshPreviews() {
-      items.forEach(refreshItemPreview);
+      items.forEach(it => refreshItemPreview(it));
     }
 
     function renderList() {
@@ -360,29 +348,6 @@
       items.forEach(it => listEl.appendChild(makeItemCard(it)));
       countMeta.textContent = items.length ? `Загружено: ${items.length}` : "Пока ничего не загружено";
       statusEl.textContent = "";
-    }
-
-    // ---- load images
-    async function readFileBytes(file) {
-      const buf = await file.arrayBuffer();
-      return new Uint8Array(buf);
-    }
-
-    async function getImageDimsFromBytes(bytes, mime) {
-      // decode via browser Image (only to read dimensions; PDF will embed original bytes)
-      const blob = new Blob([bytes], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.decoding = "async";
-      img.src = url;
-      await new Promise((res, rej) => {
-        img.onload = () => res();
-        img.onerror = () => rej(new Error("Не удалось прочитать изображение"));
-      });
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      URL.revokeObjectURL(url);
-      return { w, h };
     }
 
     filesEl.addEventListener("change", async () => {
@@ -396,7 +361,6 @@
 
         const bytes = await readFileBytes(f);
         const dims = await getImageDimsFromBytes(bytes, f.type);
-
         const blobUrl = URL.createObjectURL(new Blob([bytes], { type: f.type }));
 
         items.push({
@@ -407,9 +371,6 @@
           imgW: dims.w,
           imgH: dims.h,
           url: blobUrl,
-          fit: defaultFit.value,
-          shiftX: 0.5,
-          shiftY: 0.5,
         });
       }
 
@@ -417,41 +378,6 @@
       statusEl.textContent = items.length ? "" : "Не удалось добавить файлы (поддерживаются JPG/PNG).";
       filesEl.value = "";
     });
-
-    setAllCover.addEventListener("click", () => {
-      items.forEach(it => it.fit = "cover");
-      renderList();
-    });
-    setAllContain.addEventListener("click", () => {
-      items.forEach(it => it.fit = "contain");
-      renderList();
-    });
-
-    // ---- PDF export (no canvas; clip in PDF)
-    function drawCropMarks(page, trimX, trimY, trimW, trimH, bleedPt) {
-      if (bleedPt <= 0) return;
-
-      const markLen = Math.min(bleedPt * 0.8, mmToPt(8));
-      const lw = 0.5; // pt
-
-      // corners: (trimX,trimY), (trimX+trimW,trimY), (trimX,trimY+trimH), (trimX+trimW,trimY+trimH)
-      const L = trimX, B = trimY, R = trimX + trimW, T = trimY + trimH;
-
-      const line = (x1,y1,x2,y2) => page.drawLine({ start:{x:x1,y:y1}, end:{x:x2,y:y2}, thickness: lw });
-
-      // bottom-left
-      line(L, B - markLen, L, B);
-      line(L - markLen, B, L, B);
-      // bottom-right
-      line(R, B - markLen, R, B);
-      line(R, B, R + markLen, B);
-      // top-left
-      line(L, T, L, T + markLen);
-      line(L - markLen, T, L, T);
-      // top-right
-      line(R, T, R, T + markLen);
-      line(R, T, R + markLen, T);
-    }
 
     exportBtn.addEventListener("click", async () => {
       statusEl.textContent = "";
@@ -465,20 +391,26 @@
         return;
       }
 
-      const { PDFDocument, pushGraphicsState, popGraphicsState, moveTo, lineTo, closePath, clip, endPath } = window.PDFLib;
+      const { PDFDocument, rgb } = window.PDFLib;
 
-      const trim = currentTrimCm();
-      const bleedMm = Math.max(0, Number(bleed.value || 0));
-      const bleedPt = mmToPt(bleedMm);
+      const pageCm = currentPageCm();
+      const mm = currentMarginsMm();
 
-      const trimWpt = cmToPt(trim.w);
-      const trimHpt = cmToPt(trim.h);
+      const pageWpt = cmToPt(pageCm.w);
+      const pageHpt = cmToPt(pageCm.h);
 
-      const pageWpt = trimWpt + bleedPt * 2;
-      const pageHpt = trimHpt + bleedPt * 2;
+      const lPt = mmToPt(mm.l);
+      const rPt = mmToPt(mm.r);
+      const tPt = mmToPt(mm.t);
+      const bPt = mmToPt(mm.b);
 
-      const trimX = bleedPt;
-      const trimY = bleedPt;
+      const innerW = pageWpt - lPt - rPt;
+      const innerH = pageHpt - tPt - bPt;
+
+      if (innerW <= 0 || innerH <= 0) {
+        statusEl.textContent = "Слишком большие поля — внутреннее окно стало ≤ 0.";
+        return;
+      }
 
       statusEl.textContent = "Собираю PDF…";
 
@@ -487,64 +419,20 @@
       for (const it of items) {
         const page = pdfDoc.addPage([pageWpt, pageHpt]);
 
-        // embed image without re-rendering
+        // белый фон
+        page.drawRectangle({ x: 0, y: 0, width: pageWpt, height: pageHpt, color: rgb(1,1,1) });
+
         let img;
         if (it.mime === "image/jpeg") img = await pdfDoc.embedJpg(it.bytes);
         else img = await pdfDoc.embedPng(it.bytes);
 
-        const imgW = img.width;
-        const imgH = img.height;
-
-        // area to fill
-        const isCover = (it.fit === "cover");
-        const fillBleed = coverBleed.checked;
-
-        const areaX = (isCover && fillBleed) ? 0 : trimX;
-        const areaY = (isCover && fillBleed) ? 0 : trimY;
-        const areaW = (isCover && fillBleed) ? pageWpt : trimWpt;
-        const areaH = (isCover && fillBleed) ? pageHpt : trimHpt;
-
-        if (isCover) {
-          // clip to area (so nothing outside)
-          page.pushOperators(
-            pushGraphicsState(),
-            moveTo(areaX, areaY),
-            lineTo(areaX + areaW, areaY),
-            lineTo(areaX + areaW, areaY + areaH),
-            lineTo(areaX, areaY + areaH),
-            closePath(),
-            clip(),
-            endPath()
-          );
-
-          const scale = Math.max(areaW / imgW, areaH / imgH);
-          const drawW = imgW * scale;
-          const drawH = imgH * scale;
-
-          const extraW = Math.max(0, drawW - areaW);
-          const extraH = Math.max(0, drawH - areaH);
-
-          // shiftX: 0 (left) .. 1 (right)
-          const x = areaX - extraW + extraW * clamp01(it.shiftX);
-          // shiftY: 0 (top) .. 1 (bottom)  -> in PDF y grows вверх
-          const y = areaY - extraH + extraH * clamp01(it.shiftY);
-
-          page.drawImage(img, { x, y, width: drawW, height: drawH });
-
-          page.pushOperators(popGraphicsState());
-        } else {
-          // contain (no crop): fit inside trim area
-          const scale = Math.min(trimWpt / imgW, trimHpt / imgH);
-          const drawW = imgW * scale;
-          const drawH = imgH * scale;
-          const x = trimX + (trimWpt - drawW) / 2;
-          const y = trimY + (trimHpt - drawH) / 2;
-          page.drawImage(img, { x, y, width: drawW, height: drawH });
-        }
-
-        if (cropMarks.value === "on") {
-          drawCropMarks(page, trimX, trimY, trimWpt, trimHpt, bleedPt);
-        }
+        // ВАЖНО: растягиваем в окно (без сохранения пропорций), без обрезки
+        page.drawImage(img, {
+          x: lPt,
+          y: bPt,            // в PDF ось Y снизу вверх
+          width: innerW,
+          height: innerH
+        });
       }
 
       const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
@@ -554,14 +442,13 @@
       const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0,19).replaceAll(":","-");
       a.href = url;
-      a.download = `homelly_batch_${trim.w}x${trim.h}_bleed${bleedMm}mm_${stamp}.pdf`;
+      a.download = `homelly_margins_${pageCm.w}x${pageCm.h}_L${mm.l}R${mm.r}T${mm.t}B${mm.b}_${stamp}.pdf`;
       a.click();
 
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      statusEl.innerHTML = `<span class="good">Готово ✅</span> PDF скачан. (Если PDF очень тяжёлый — это нормально, это и есть “без потери качества”.)`;
+      statusEl.innerHTML = `<span class="good">Готово ✅</span> PDF скачан.`;
     });
 
-    // init
     libMeta.textContent = window.PDFLib ? "pdf-lib: OK" : "pdf-lib: loading…";
     setPresetUI(pagePreset.value);
   })();
